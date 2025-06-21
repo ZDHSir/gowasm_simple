@@ -1,3 +1,4 @@
-# golang wasm calculator example(计算器例子)
-![图片](https://github.com/user-attachments/assets/1e73c0b5-39ba-44d5-8e12-2b4cd807d36c)
+# golang wasm calculator example (计算器例子)
+![图片](https://github.com/user-attachments/assets/98f37243-f609-4cfd-8eb4-6a28000818f2)
+
 
