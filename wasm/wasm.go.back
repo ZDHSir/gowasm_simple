@@ -1,0 +1,160 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"strconv"
+	"syscall/js"
+	"unicode"
+)
+
+func browserJudgeExpr(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return int32(0)
+	}
+	expr := args[0].String()
+	_, err := CalcExpr(expr)
+	if err != nil {
+		return int32(0)
+	}
+	return int32(1)
+}
+
+// 计算表达式结果：出错返回0
+func browserCalcExpr(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return float64(0)
+	}
+	expr := args[0].String()
+	result, err := CalcExpr(expr)
+	if err != nil {
+		return float64(0)
+	}
+	return result
+}
+
+// 计算表达式的主函数
+func CalcExpr(expr string) (float64, error) {
+	pos := 0
+	return parseExpr(expr, &pos)
+}
+
+// 解析表达式（加减）
+func parseExpr(s string, pos *int) (float64, error) {
+	acc, err := parseTerm(s, pos)
+	if err != nil {
+		return 0, err
+	}
+	for {
+		skipSpace(s, pos)
+		if *pos >= len(s) {
+			break
+		}
+		op := s[*pos]
+		if op != '+' && op != '-' {
+			break
+		}
+		*pos++
+		val, err := parseTerm(s, pos)
+		if err != nil {
+			return 0, err
+		}
+		if op == '+' {
+			acc += val
+		} else {
+			acc -= val
+		}
+	}
+	return acc, nil
+}
+
+// 解析项（乘除）
+func parseTerm(s string, pos *int) (float64, error) {
+	acc, err := parseFactor(s, pos)
+	if err != nil {
+		return 0, err
+	}
+	for {
+		skipSpace(s, pos)
+		if *pos >= len(s) {
+			break
+		}
+		op := s[*pos]
+		if op != '*' && op != '/' {
+			break
+		}
+		*pos++
+		val, err := parseFactor(s, pos)
+		if err != nil {
+			return 0, err
+		}
+		if op == '*' {
+			acc *= val
+		} else {
+			acc /= val
+		}
+	}
+	return acc, nil
+}
+
+// 解析因子（数字或括号）
+func parseFactor(s string, pos *int) (float64, error) {
+	skipSpace(s, pos)
+	if *pos >= len(s) {
+		return 0, fmt.Errorf("unexpected end")
+	}
+	if s[*pos] == '(' {
+		*pos++
+		v, err := parseExpr(s, pos)
+		if err != nil {
+			return 0, err
+		}
+		skipSpace(s, pos)
+		if *pos >= len(s) || s[*pos] != ')' {
+			return 0, fmt.Errorf("missing )")
+		}
+		*pos++
+		return v, nil
+	}
+	return parseNumber(s, pos)
+}
+
+// 解析数字
+func parseNumber(s string, pos *int) (float64, error) {
+	skipSpace(s, pos)
+	start := *pos
+	for *pos < len(s) && (unicode.IsDigit(rune(s[*pos])) || s[*pos] == '.') {
+		*pos++
+	}
+	if start == *pos {
+		return 0, fmt.Errorf("expected number at pos %d", *pos)
+	}
+	val, err := strconv.ParseFloat(s[start:*pos], 64)
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
+}
+
+// 跳过空格
+func skipSpace(s string, pos *int) {
+	for *pos < len(s) && s[*pos] == ' ' {
+		*pos++
+	}
+}
+
+func main() {
+	// expr := "3 + 2 * (1 + 4) / 5 - 6"
+	// expr := "(3 + 2 * (1 + 4)) / 5"
+	expr := "0.1 + 0.2"
+	result, err := CalcExpr(expr)
+	if err != nil {
+		fmt.Println("Error:", err)
+	} else {
+		fmt.Println(expr, "=", result)
+	}
+	log.Println("Wasm loaded!")
+	js.Global().Set("BrowserJudgeExpr", js.FuncOf(browserJudgeExpr))
+	js.Global().Set("BrowserCalcExpr", js.FuncOf(browserCalcExpr))
+	select {} // 阻塞主线程
+}

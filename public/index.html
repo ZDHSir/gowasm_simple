@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计算器</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f9f9f9; }
+        #calc-container { background: #fff; width: 320px; margin: 60px auto; border-radius: 12px; box-shadow: 0 0 10px #ccc; padding: 28px 22px;}
+        #display { width: 100%; height: 40px; font-size: 1.5em; text-align: right; margin-bottom: 18px; padding: 8px; border: 1px solid #ddd; border-radius: 6px;}
+        .calc-row { display: flex; justify-content: space-between; margin-bottom: 8px;}
+        .calc-btn {
+            flex: 1 1 22%;
+            height: 44px;
+            margin: 0 4px;
+            font-size: 1.3em;
+            border: none;
+            border-radius: 6px;
+            background: #f2f2f2;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        .calc-btn.operator { background: #ffeb3b; }
+        .calc-btn.equals { background: #4caf50; color: #fff; }
+        .calc-btn.clear { background: #e57373; color: #fff; }
+        .calc-btn.back { background: #90caf9; color: #fff; }
+        .calc-btn:active { background: #ccc; }
+    </style>
+</head>
+<body>
+<div id="calc-container">
+    <input id="display" type="text" readonly value="">
+    <div class="calc-row">
+        <button class="calc-btn" onclick="appendChar('7')">7</button>
+        <button class="calc-btn" onclick="appendChar('8')">8</button>
+        <button class="calc-btn" onclick="appendChar('9')">9</button>
+        <button class="calc-btn operator" onclick="appendChar('/')">÷</button>
+    </div>
+    <div class="calc-row">
+        <button class="calc-btn" onclick="appendChar('4')">4</button>
+        <button class="calc-btn" onclick="appendChar('5')">5</button>
+        <button class="calc-btn" onclick="appendChar('6')">6</button>
+        <button class="calc-btn operator" onclick="appendChar('*')">×</button>
+    </div>
+    <div class="calc-row">
+        <button class="calc-btn" onclick="appendChar('1')">1</button>
+        <button class="calc-btn" onclick="appendChar('2')">2</button>
+        <button class="calc-btn" onclick="appendChar('3')">3</button>
+        <button class="calc-btn operator" onclick="appendChar('-')">-</button>
+    </div>
+    <div class="calc-row">
+        <button class="calc-btn" onclick="appendChar('0')">0</button>
+        <button class="calc-btn" onclick="appendChar('.')">.</button>
+        <button class="calc-btn clear" onclick="clearDisplay()">C</button>
+        <button class="calc-btn operator" onclick="appendChar('+')">+</button>
+    </div>
+    <div class="calc-row">
+        <button class="calc-btn" style="flex: 1 1 100%;" onclick="appendChar('(')">(</button>
+        <button class="calc-btn" style="flex: 1 1 100%;" onclick="appendChar(')')">)</button>
+        <button class="calc-btn equals" style="flex: 2 1 100%;" onclick="evaluateExpr()">=</button>
+        <button class="calc-btn back" style="flex: 1 1 100%;" onclick="backspace()">&larr;</button>
+    </div>
+</div>
+<script src="wasm_exec.js"></script>
+<script>
+    async function initWasm(){
+        // judgeExpr 返回 1 则正确，返回 0 则非表达式
+        // calcExpr 返回结果，返0则可能是错误也可能是计算结果
+        const go = new Go();
+        const wasmRes = await WebAssembly.instantiateStreaming(fetch("wasm.wasm"), go.importObject);
+        const wasmInstance = wasmRes.instance;
+        await go.run(wasmInstance);
+    }
+    window.onload = function(){
+        initWasm().then(() => {})
+    }
+</script>
+<script>
+    function appendChar(char) {
+        const display = document.getElementById('display');
+        display.value += char;
+    }
+    function clearDisplay() {
+        document.getElementById('display').value = '';
+    }
+    function backspace() {
+        const display = document.getElementById('display');
+        display.value = display.value.slice(0, -1);
+    }
+    function evaluateExpr() {
+        const display = document.getElementById('display');
+        let expr = display.value;
+        try {
+            const verify = judgeExpr(expr)
+            if(verify === 0){
+                display.value = '表达式错误';
+            }else{
+                const val = calcExpr(expr)
+                display.value = val;
+            }
+        } catch (e) {
+            display.value = '表达式错误';
+        }
+    }
+</script>
+</body>
+</html>
