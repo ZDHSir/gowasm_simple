@@ -8,7 +8,7 @@ import (
 	"strings"
 	"syscall/js"
 
-	// "github.com/dengsgo/math-engine/engine"
+	"github.com/dengsgo/math-engine/engine"
 	"github.com/shopspring/decimal"
 )
 
@@ -20,6 +20,19 @@ var (
 		"/": 2,
 	}
 )
+
+// 科学计数法
+func ScienceCalc(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return float64(0)
+	}
+	expr := args[0].String()
+	result, err := engine.ParseAndExec(expr)
+	if err != nil {
+		return float64(0)
+	}
+	return result
+}
 
 // 将中缀表达式转为逆波兰表达式
 func infixToRPN(expr string) ([]string, error) {
@@ -163,5 +176,6 @@ func main() {
 	log.Println("Wasm loaded!")
 	js.Global().Set("judgeExpr", js.FuncOf(browserJudgeExpr))
 	js.Global().Set("calcExpr", js.FuncOf(browserCalcExpr))
+	js.Global().Set("scienceCalc", js.FuncOf(ScienceCalc))
 	select {}
 }
